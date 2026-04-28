@@ -6,8 +6,13 @@ import {
 } from "@hello-pangea/dnd"
 import { supabase } from "./supabaseClient"
 import logo from "./nextplaylogo.png"
-
 const columns = ["todo", "in_progress", "in_review", "done"]
+const columnLabels = {
+  todo: "To Do",
+  in_progress: "In Progress",
+  in_review: "Review",
+  done: "Done",
+}
 
 function App() {
   //States
@@ -36,6 +41,7 @@ function App() {
   const [filterFlag, setFilterFlag] = useState("all")
   const [sortBy, setSortBy] = useState("none")
   const [view, setView] = useState("board")
+  const [currentDate, setCurrentDate] = useState(new Date())
 
   const totalTasks = tasks.length
 
@@ -61,7 +67,7 @@ function App() {
     initUser()
   }, [])
 
-  // 📦 Fetch data
+  // Fetch data
   useEffect(() => {
     if (!user) return
 
@@ -175,11 +181,13 @@ const addMember = async () => {
 }
 
   // Drag
+
   const handleDragEnd = async (result) => {
-  console.log("🔥 DRAG FIRED")
+  //debugging
+    console.log("DRAG FIRED")
 
   if (!result.destination) {
-    console.log("❌ NO DESTINATION")
+    console.log("NO DESTINATION")
     return
   }
 
@@ -205,7 +213,7 @@ const addMember = async () => {
       )
     )
 
-    // 🔥 FORCE CALL
+    // FORCE CALL
     console.log("👉 CALLING LOG ACTIVITY")
     await logActivity(
       String(draggableId),
@@ -213,7 +221,7 @@ const addMember = async () => {
     )
 
   } catch (err) {
-    console.error("❌ DRAG ERROR:", err)
+    console.error(" DRAG ERROR:", err)
   }
 }
   // ActivityDetail
@@ -272,7 +280,7 @@ const addMember = async () => {
   const assignMember = async (task) => {
     if (!team.length) return
 
-    const member = team[0] // simple for now
+    const member = team[0]
 
     const updated = [...(task.assignees || []), member.id]
 
@@ -310,8 +318,8 @@ const addMember = async () => {
 
   const CalendarView = ({ tasks }) => {
   const today = new Date()
-  const year = today.getFullYear()
-  const month = today.getMonth()
+  const year = currentDate.getFullYear()
+  const month = currentDate.getMonth()
 
   // get first day of month
   const firstDay = new Date(year, month, 1).getDay()
@@ -319,12 +327,23 @@ const addMember = async () => {
 
   // group tasks by date
   const tasksByDate = {}
-  tasks.forEach(task => {
-    if (!task.due_date) return
-    const date = new Date(task.due_date).getDate()
-    if (!tasksByDate[date]) tasksByDate[date] = []
-    tasksByDate[date].push(task)
-  })
+
+
+tasks.forEach(task => {
+  if (!task.due_date) return
+
+  const dateObj = new Date(task.due_date)
+
+  if (
+    dateObj.getMonth() === month &&
+    dateObj.getFullYear() === year
+  ) {
+    const day = dateObj.getDate()
+
+    if (!tasksByDate[day]) tasksByDate[day] = []
+    tasksByDate[day].push(task)
+  }
+})
 
   const days = []
 
@@ -334,67 +353,127 @@ const addMember = async () => {
   }
 
   // actual days
-  for (let d = 1; d <= daysInMonth; d++) {
-    const isToday = d === today.getDate()
-    days.push(
-      <div
-        key={d}
-        style={{
-          border: isToday
-            ? "2px solid #3b82f6"
-            : "1px solid rgba(255,255,255,0.2)",
+  <div
+  style={{
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "12px",
+    color: "white",
+  }}
+  >
+  </div>
+    for (let d = 1; d <= daysInMonth; d++) {
+      const isToday =     
+        d === today.getDate() &&
+        month === today.getMonth() &&
+        year === today.getFullYear()
 
-          borderRadius: "10px",
-          padding: "8px",
-          minHeight: "100px",
+      days.push(
+        <div
+          key={d}
+          style={{
+            border: isToday
+              ? "2px solid #3b82f6"
+              : "1px solid rgba(255,255,255,0.2)",
 
-          background: isToday
-          ? "#dbeafe"   
-          : "#ffffff",  
+            borderRadius: "10px",
+            padding: "8px",
+            minHeight: "100px",
 
-          boxShadow: isToday
-          ? "0 0 12px rgba(59,130,246,0.5)"
-          : "0 2px 6px rgba(0,0,0,0.1)",
-          
-          border: isToday
-          ? "2px solid #3b82f6"
-          : "1px solid #e5e7eb",
-        }}
-      >
-        <div style={{ fontWeight: "bold", marginBottom: "4px" }}>
-          {d}
-        </div>
+            background: isToday
+            ? "#dbeafe"   
+            : "#ffffff",  
 
-        {(tasksByDate[d] || []).map(task => (
-          <div
-            key={task.id}
-            style={{
-              fontSize: "11px",
-              background: "#f1f5f9",
-              padding: "4px",
-              borderRadius: "6px",
-              marginBottom: "4px",
-            }}
-          >
-            {task.title}
+            boxShadow: isToday
+            ? "0 0 12px rgba(59,130,246,0.5)"
+            : "0 2px 6px rgba(0,0,0,0.1)",
+
+          }}
+        >
+          <div style={{ fontWeight: "bold", marginBottom: "4px" }}>
+            {d}
           </div>
-        ))}
-      </div>
-    )
-  }
 
-  return (
-    <div
+          {(tasksByDate[d] || []).map(task => (
+            <div
+              key={task.id}
+              style={{
+                fontSize: "11px",
+                background: "#f1f5f9",
+                padding: "4px",
+                borderRadius: "6px",
+                marginBottom: "4px",
+              }}
+            >
+              {task.title}
+            </div>
+          ))}
+        </div>
+      )
+    }
+
+    return (
+      <>
+        {/*  MONTH NAV BAR */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "12px",
+            color: "white",
+          }}
+        >
+          <button
+      onClick={() => setCurrentDate(new Date(year, month - 1, 1))}
       style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(7, 1fr)",
-        gap: "10px",
+        background: "white",
+        border: "none",
+        borderRadius: "6px",
+        padding: "6px 10px",
+        cursor: "pointer",
+        fontWeight: "bold",
       }}
     >
-      {days}
-    </div>
-  )
-}
+      ←
+    </button>
+
+          <h3>
+            {currentDate.toLocaleString("default", {
+              month: "long",
+              year: "numeric",
+            })}
+          </h3>
+
+          <button
+      onClick={() => setCurrentDate(new Date(year, month + 1, 1))}
+      style={{
+        background: "white",
+        border: "none",
+        borderRadius: "6px",
+        padding: "6px 10px",
+        cursor: "pointer",
+        fontWeight: "bold",
+      }}
+    >
+            →
+          </button>
+        </div>
+
+        {/*  CALENDAR GRID */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(7, 1fr)",
+            gap: "10px",
+          }}
+        >
+          {days}
+        </div>
+      </>
+    )
+  }
 
   //Styles
   const statCard = {
@@ -415,32 +494,32 @@ const addMember = async () => {
     done: "#dcfce7",
   }
   const selectStyle = {
-  padding: "8px 10px",
-  borderRadius: "8px",
-  border: "none",
-  background: "white",
-  cursor: "pointer",
-}
+    padding: "8px 10px",
+    borderRadius: "8px",
+    border: "none",
+    background: "white",
+    cursor: "pointer",
+  }
 
-const primaryBtn = {
-  padding: "10px 16px",
-  borderRadius: "10px",
-  border: "none",
-  background: "linear-gradient(135deg, #3b82f6, #2563eb)",
-  color: "white",
-  fontWeight: "600",
-  cursor: "pointer",
-  boxShadow: "0 4px 10px rgba(0,0,0,0.2)",
-}
+  const primaryBtn = {
+    padding: "10px 16px",
+    borderRadius: "10px",
+    border: "none",
+    background: "linear-gradient(135deg, #3b82f6, #2563eb)",
+    color: "white",
+    fontWeight: "600",
+    cursor: "pointer",
+    boxShadow: "0 4px 10px rgba(0,0,0,0.2)",
+  }
 
-const secondaryBtn = {
-  padding: "10px 16px",
-  borderRadius: "10px",
-  border: "none",
-  background: "rgba(255,255,255,0.8)",
-  fontWeight: "600",
-  cursor: "pointer",
-}
+  const secondaryBtn = {
+    padding: "10px 16px",
+    borderRadius: "10px",
+    border: "none",
+    background: "rgba(255,255,255,0.8)",
+    fontWeight: "600",
+    cursor: "pointer",
+  }
 
   return (
     <>
@@ -451,60 +530,60 @@ const secondaryBtn = {
       background: "linear-gradient(135deg, #1e40af, #3b82f6, #93c5fd)",
     }}
   >
-    {/* LEFT SIDEBAR */}
-<div
-  style={{
-    width: "260px",
-    minHeight: "100vh",
-    position: "sticky",
-    top: "0",
+  {/* LEFT SIDEBAR */}
+  <div
+    style={{
+      width: "260px",
+      minHeight: "100vh",
+      position: "sticky",
+      top: "0",
 
-    display: "flex",
-    flexDirection: "column",
+      display: "flex",
+      flexDirection: "column",
 
-    background: "linear-gradient(180deg, #1e3a8a, #1e40af)",
-    color: "white",
-    boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
-    borderRadius: "12px",
-    padding: "16px",
-  }}
->
-  <h3 style={{ textAlign: "center", marginBottom: "12px" }}>
-    Board Stats
-  </h3>
+      background: "linear-gradient(180deg, #1e3a8a, #1e40af)",
+      color: "white",
+      boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+      borderRadius: "12px",
+      padding: "16px",
+    }}
+  >
+    <h3 style={{ textAlign: "center", marginBottom: "12px" }}>
+      Board Stats
+    </h3>
 
-  {/* TOTAL */}
-  <div style={statCard}>
-  <div style={{ fontSize: "13px", opacity: 0.8 }}>
-    Total Tasks
-  </div>
-  <div style={{ fontSize: "20px", fontWeight: "700" }}>
-    {totalTasks}
-  </div>
-</div>
-
-  {/* COMPLETED */}
-  <div style={statCard}>
+    {/* TOTAL */}
+    <div style={statCard}>
     <div style={{ fontSize: "13px", opacity: 0.8 }}>
-    Completed
+      Total Tasks
+    </div>
+    <div style={{ fontSize: "20px", fontWeight: "700" }}>
+      {totalTasks}
+    </div>
   </div>
-  <div style={{ fontSize: "20px", fontWeight: "700" }}>
-    {completedTasks}
-  </div>
-</div>
 
-  {/* OVERDUE */}
-  <div style={statCard}>
-    <div style={{ fontSize: "13px", opacity: 0.8 }}>
-    Overdue
+    {/* COMPLETED */}
+    <div style={statCard}>
+      <div style={{ fontSize: "13px", opacity: 0.8 }}>
+      Completed
+    </div>
+    <div style={{ fontSize: "20px", fontWeight: "700" }}>
+      {completedTasks}
+    </div>
   </div>
-    <strong style={{ color: "#ef4444" }}>{overdueTasks}</strong>
+
+    {/* OVERDUE */}
+    <div style={statCard}>
+      <div style={{ fontSize: "13px", opacity: 0.8 }}>
+      Overdue
+    </div>
+      <strong style={{ color: "#ef4444" }}>{overdueTasks}</strong>
+    </div>
+    <div style={statCard}>
+      <span style={{ fontSize: "13px", opacity: 0.8 }}>Progress</span>
+      <strong>{percentDone}%</strong>
+    </div>
   </div>
-  <div style={statCard}>
-    <span style={{ fontSize: "13px", opacity: 0.8 }}>Progress</span>
-    <strong>{percentDone}%</strong>
-  </div>
-</div>
     <div style={{ flex: 1, padding: "20px" }}>
       {/* HEADER */}
       <div
@@ -521,926 +600,928 @@ const secondaryBtn = {
       </div>
 
      {/* CONTROLS */}
-<div
-  style={{
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: "12px",
-    marginBottom: "20px",
-  }}
->
-  <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
-  <button
-    onClick={() => setView("board")}
-    style={{
-      padding: "8px 12px",
-      borderRadius: "8px",
-      border: "none",
-      background: view === "board" ? "#2563eb" : "#e5e7eb",
-      color: view === "board" ? "white" : "black",
-      cursor: "pointer",
-    }}
-  >
-    Board
-  </button>
-
-  <button
-    onClick={() => setView("calendar")}
-    style={{
-      padding: "8px 12px",
-      borderRadius: "8px",
-      border: "none",
-      background: view === "calendar" ? "#2563eb" : "#e5e7eb",
-      color: view === "calendar" ? "white" : "black",
-      cursor: "pointer",
-    }}
-  >
-    Calendar
-  </button>
-</div>
-
-  {/* 🔍 SEARCH + FILTERS */}
-  <div
-    style={{
-      display: "flex",
-      gap: "10px",
-      alignItems: "center",
-      background: "rgba(255,255,255,0.15)",
-      padding: "10px",
-      borderRadius: "12px",
-      backdropFilter: "blur(6px)",
-    }}
-  >
-    {/* SEARCH INPUT */}
-    <input
-      type="text"
-      placeholder="Search tasks..."
-      value={searchQuery}
-      onChange={(e) => setSearchQuery(e.target.value)}
-      style={{
-        padding: "10px 14px",
-        borderRadius: "10px",
-        border: "none",
-        outline: "none",
-        width: "220px",
-        fontSize: "14px",
-        background: "rgba(255,255,255,0.9)",
-      }}
-    />
-
-    {/* ASSIGNEE */}
-    <select
-      value={filterAssignee}
-      onChange={(e) => setFilterAssignee(e.target.value)}
-      style={selectStyle}
-    >
-      <option value="all">All Members</option>
-      {team.map((m) => (
-        <option key={m.id} value={m.id}>
-          {m.name}
-        </option>
-      ))}
-    </select>
-
-    {/* FLAG */}
-    <select
-      value={filterFlag}
-      onChange={(e) => setFilterFlag(e.target.value)}
-      style={selectStyle}
-    >
-      <option value="all">All Flags</option>
-      {flags.map((f) => (
-        <option key={f.name} value={f.name}>
-          {f.name}
-        </option>
-      ))}
-    </select>
-
-    {/* SORT */}
-    <select
-      value={sortBy}
-      onChange={(e) => setSortBy(e.target.value)}
-      style={selectStyle}
-    >
-      <option value="none">Sort</option>
-      <option value="due">Due Date</option>
-      <option value="title">Title</option>
-      <option value="flag">Flag</option>
-    </select>
-
-    {/* ❌ CLEAR BUTTON */}
-    <button
-      onClick={() => {
-        setSearchQuery("")
-        setFilterAssignee("all")
-        setFilterFlag("all")
-        setSortBy("none")
-      }}
-      style={{
-        padding: "8px 12px",
-        borderRadius: "8px",
-        border: "none",
-        cursor: "pointer",
-        background: "#ef4444",
-        color: "white",
-        fontWeight: "bold",
-      }}
-    >
-      Clear
-    </button>
-  </div>
-
-  {/* ➕ ACTION BUTTONS */}
-  <div style={{ display: "flex", gap: "12px" }}>
-    <button style={primaryBtn} onClick={addTask}>
-      + Add Task
-    </button>
-
-    <button style={secondaryBtn} onClick={addMember}>
-      + Add Member
-    </button>
-  </div>
-
-</div>
-      {/* TEAM DISPLAY */}
       <div
         style={{
           display: "flex",
-          justifyContent: "center",
-          gap: "10px",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: "12px",
           marginBottom: "20px",
         }}
       >
+        <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
+        <button
+          onClick={() => setView("board")}
+          style={{
+            padding: "8px 12px",
+            borderRadius: "8px",
+            border: "none",
+            background: view === "board" ? "#2563eb" : "#e5e7eb",
+            color: view === "board" ? "white" : "black",
+            cursor: "pointer",
+          }}
+        >
+          Board
+        </button>
+
+        <button
+          onClick={() => setView("calendar")}
+          style={{
+            padding: "8px 12px",
+            borderRadius: "8px",
+            border: "none",
+            background: view === "calendar" ? "#2563eb" : "#e5e7eb",
+            color: view === "calendar" ? "white" : "black",
+            cursor: "pointer",
+          }}
+        >
+          Calendar
+        </button>
       </div>
-      {/* BOARD */}
-      {view === "board" ? (
-      <DragDropContext onDragEnd={handleDragEnd}>
-  {/* LEFT: TASK COLUMNS */}
-  <div
-    style={{
-      display: "flex",
-      gap: "20px",
-      flex: 1,            // takes remaining space
-    }}
-  >
 
-
-  {/* LEFT: TASK BOARD */}
-    {columns.map((col) => (
-      <Droppable key={col} droppableId={col}>
-        {(provided) => (
-          <div
-            ref={provided.innerRef}
-            {...provided.droppableProps}
+        {/* SEARCH + FILTERS */}
+        <div
+          style={{
+            display: "flex",
+            gap: "10px",
+            alignItems: "center",
+            background: "rgba(255,255,255,0.15)",
+            padding: "10px",
+            borderRadius: "12px",
+            backdropFilter: "blur(6px)",
+          }}
+        >
+          {/* SEARCH INPUT */}
+          <input
+            type="text"
+            placeholder="Search tasks..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             style={{
-              width: "250px",
-              minHeight: "400px",
-              background: columnColors[col],
-              borderRadius: "12px",
-              padding: "12px",
+              padding: "10px 14px",
+              borderRadius: "10px",
+              border: "none",
+              outline: "none",
+              width: "220px",
+              fontSize: "14px",
+              background: "rgba(255,255,255,0.9)",
+            }}
+          />
+
+          {/* ASSIGNEE */}
+          <select
+            value={filterAssignee}
+            onChange={(e) => setFilterAssignee(e.target.value)}
+            style={selectStyle}
+          >
+            <option value="all">All Members</option>
+            {team.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </select>
+
+          {/* FLAG */}
+          <select
+            value={filterFlag}
+            onChange={(e) => setFilterFlag(e.target.value)}
+            style={selectStyle}
+          >
+            <option value="all">All Flags</option>
+            {flags.map((f) => (
+              <option key={f.name} value={f.name}>
+                {f.name}
+              </option>
+            ))}
+          </select>
+
+          {/* SORT */}
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            style={selectStyle}
+          >
+            <option value="none">Sort</option>
+            <option value="due">Due Date</option>
+            <option value="title">Title</option>
+            <option value="flag">Flag</option>
+          </select>
+
+          {/* CLEAR BUTTON */}
+          <button
+            onClick={() => {
+              setSearchQuery("")
+              setFilterAssignee("all")
+              setFilterFlag("all")
+              setSortBy("none")
+            }}
+            style={{
+              padding: "8px 12px",
+              borderRadius: "8px",
+              border: "none",
+              cursor: "pointer",
+              background: "#ef4444",
+              color: "white",
+              fontWeight: "bold",
             }}
           >
-            <h3 style={{ textAlign: "center" }}>{col}</h3>
-                  {/*Task Cards*/}
+            Clear
+          </button>
+        </div>
 
-                  {tasks
-                  .filter((task) => task.status === col)
-                  //  SEARCH (title)
-                  .filter((task) =>
-                    task.title.toLowerCase().includes(searchQuery.toLowerCase())
-                  )
+        {/* ACTION BUTTONS */}
+        <div style={{ display: "flex", gap: "12px" }}>
+          <button style={primaryBtn} onClick={addTask}>
+            + Add Task
+          </button>
 
-                  //  ASSIGNEE FILTER
-                  .filter((task) =>
-                    filterAssignee === "all"
-                      ? true
-                      : task.assignees?.includes(filterAssignee)
-                  )
+          <button style={secondaryBtn} onClick={addMember}>
+            + Add Member
+          </button>
+        </div>
 
-                  //  FLAG FILTER
-                  .filter((task) =>
-                    filterFlag === "all"
-                      ? true
-                      : task.flag === filterFlag
-                  )
+      </div>
+            {/* TEAM DISPLAY */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                gap: "10px",
+                marginBottom: "20px",
+              }}
+            >
+            </div>
+            {/* BOARD */}
+            {view === "board" ? (
+            <DragDropContext onDragEnd={handleDragEnd}>
+        {/* LEFT: TASK COLUMNS */}
+        <div
+          style={{
+            display: "flex",
+            gap: "20px",
+            flex: 1,            
+          }}
+        >
 
-                  //  SORT
-                  .sort((a, b) => {
-                    if (sortBy === "due") {
-                      return new Date(a.due_date || 0) - new Date(b.due_date || 0)
-                    }
-                    if (sortBy === "title") {
-                      return a.title.localeCompare(b.title)
-                    }
-                    if (sortBy === "flag") {
-                      return (a.flag || "").localeCompare(b.flag || "")
-                    }
-                    return 0
-                  })
 
-                  .map((task, index) => {
+        {/* LEFT: TASK BOARD */}
+          {columns.map((col) => (
+            <Droppable key={col} droppableId={col}>
+              {(provided) => (
+                <div
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
+                  style={{
+                    width: "250px",
+                    minHeight: "400px",
+                    background: columnColors[col],
+                    borderRadius: "12px",
+                    padding: "12px",
+                  }}
+                >
+                  <h3 style={{ textAlign: "center" }}>
+                      {columnLabels[col]}
+                    </h3>
+                        {/*Task Cards*/}
 
-                    const isDueSoon = (dueDate) => {
-                      if (!dueDate) return false
-                      const now = new Date()
-                      const due = new Date(dueDate)
-                      const diff = (due - now) / (1000 * 60 * 60)
-                      return diff <= 24 && diff > 0
-                    }
+                        {tasks
+                        .filter((task) => task.status === col)
+                        //  SEARCH (title)
+                        .filter((task) =>
+                          task.title.toLowerCase().includes(searchQuery.toLowerCase())
+                        )
 
-                    const isOverdue = (dueDate) => {
-                      if (!dueDate) return false
-                      return new Date(dueDate) < new Date()
-                    }
-                    return(
-                    <Draggable
-                      key={task.id}
-                      draggableId={task.id}
-                      index={index}
-                    >
-                      {(provided) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          {...provided.dragHandleProps}
-                          style={{
-                            background:
-                              flags.find(f => f.name === task.flag)?.color
-                                ? flags.find(f => f.name === task.flag).color + "20"
-                                : "white",
-                            borderLeft: flags.find(f => f.name === task.flag)
-                              ? `4px solid ${flags.find(f => f.name === task.flag).color}`
-                              : "none",
-                            padding: "12px",
-                            marginBottom: "12px",
-                            borderRadius: "10px",
-                            boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
-                            ...provided.draggableProps.style,
-                          }}
-                        >
-                          {/* ✏️ EDIT MODE */}
-                          {editingTaskId === task.id ? (
-                            <div>
-                              <input
-                                value={editTitle}
-                                onChange={(e) => setEditTitle(e.target.value)}
-                                style={{
-                                  width: "100%",
-                                  marginBottom: "6px",
-                                  padding: "6px",
-                                  borderRadius: "6px",
-                                  border: "1px solid #ccc",
-                                }}
-                              />
+                        //  ASSIGNEE FILTER
+                        .filter((task) =>
+                          filterAssignee === "all"
+                            ? true
+                            : task.assignees?.includes(filterAssignee)
+                        )
 
-                              <input
-                                type="datetime-local"
-                                value={editDueDate}
-                                onChange={(e) => setEditDueDate(e.target.value)}
-                                style={{
-                                  width: "100%",
-                                  padding: "6px",
-                                  borderRadius: "6px",
-                                  border: "1px solid #ccc",
-                                  marginBottom: "6px",
-                                }}
-                              />
+                        //  FLAG FILTER
+                        .filter((task) =>
+                          filterFlag === "all"
+                            ? true
+                            : task.flag === filterFlag
+                        )
 
-                              <textarea
-                                placeholder="Description..."
-                                value={editDesc}
-                                onChange={(e) => setEditDesc(e.target.value)}
-                                style={{
-                                  width: "100%",
-                                  padding: "6px",
-                                  borderRadius: "6px",
-                                  border: "1px solid #ccc",
-                                  marginBottom: "6px",
-                                }}
-                              />
+                        //  SORT
+                        .sort((a, b) => {
+                          if (sortBy === "due") {
+                            return new Date(a.due_date || 0) - new Date(b.due_date || 0)
+                          }
+                          if (sortBy === "title") {
+                            return a.title.localeCompare(b.title)
+                          }
+                          if (sortBy === "flag") {
+                            return (a.flag || "").localeCompare(b.flag || "")
+                          }
+                          return 0
+                        })
 
-                              <div style={{ display: "flex", gap: "6px" }}>
-                                <button
-                                  onClick={async () => {
-                                      console.log("🔥 SAVE CLICKED")
+                        .map((task, index) => {
 
-                                      if (!editTitle.trim()) {
-                                        console.log("❌ empty title")
-                                        return
-                                      }
+                          const isDueSoon = (dueDate) => {
+                            if (!dueDate) return false
+                            const now = new Date()
+                            const due = new Date(dueDate)
+                            const diff = (due - now) / (1000 * 60 * 60)
+                            return diff <= 24 && diff > 0
+                          }
 
-                                      try {
-                                        const { data, error } = await supabase
-                                          .from("tasks")
-                                          .update({
-                                            title: editTitle,
-                                            description: editDesc || "",
-                                            due_date: editDueDate
-                                              ? new Date(editDueDate).toISOString()
-                                              : null,
-                                          })
-                                          .eq("id", String(task.id))
-                                          .select()
-
-                                        if (error) {
-                                          console.error("❌ UPDATE FAILED:", error)
-                                          return
-                                        }
-
-                                        if (!data || data.length === 0) return
-
-                                        const updatedTask = data[0]
-
-                                        setTasks((prev) =>
-                                          prev.map((t) =>
-                                            t.id === updatedTask.id ? updatedTask : t
-                                          )
-                                        )
-
-                                        if (activeDetailTask?.id === updatedTask.id) {
-                                          setActiveDetailTask(updatedTask)
-                                        }
-
-                                        await logActivity(updatedTask.id, "Edited task")
-
-                                        setEditingTaskId(null)
-
-                                        // 🔥 RESET INPUTS
-                                        setEditTitle("")
-                                        setEditDesc("")
-                                        setEditDueDate("")
-
-                                      } catch (err) {
-                                        console.error("❌ SAVE CRASH:", err)
-                                      }
-                                    }}
-                                  style={{
-                                    padding: "6px 10px",
-                                    borderRadius: "6px",
-                                    border: "none",
-                                    background: "#2563eb",
-                                    color: "white",
-                                    cursor: "pointer",
-                                  }}
-                                >
-                                  Save
-                                </button>
-
-                                <button
-                                  onClick={() => setEditingTaskId(null)}
-                                  style={{
-                                    padding: "6px 10px",
-                                    borderRadius: "6px",
-                                    border: "none",
-                                    background: "#e5e7eb",
-                                    cursor: "pointer",
-                                  }}
-                                >
-                                  Cancel
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <>
-                              {/* 🧠 HEADER (title + actions) */}
+                          const isOverdue = (dueDate) => {
+                            if (!dueDate) return false
+                            return new Date(dueDate) < new Date()
+                          }
+                          return(
+                          <Draggable
+                            key={task.id}
+                            draggableId={task.id}
+                            index={index}
+                          >
+                            {(provided) => (
                               <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
                                 style={{
-                                  display: "flex",
-                                  justifyContent: "space-between",
-                                  alignItems: "center",
+                                  background:
+                                    flags.find(f => f.name === task.flag)?.color
+                                      ? flags.find(f => f.name === task.flag).color + "20"
+                                      : "white",
+                                  borderLeft: flags.find(f => f.name === task.flag)
+                                    ? `4px solid ${flags.find(f => f.name === task.flag).color}`
+                                    : "none",
+                                  padding: "12px",
+                                  marginBottom: "12px",
+                                  borderRadius: "10px",
+                                  boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+                                  ...provided.draggableProps.style,
                                 }}
                               >
-                                <span
-                                  onClick={() => setActiveDetailTask(task)}
-                                  style={{ cursor: "pointer"}}
-                                >{task.title}</span>
-
-                                <div style={{ display: "flex", gap: "8px" }}>
-                                  {/* 🚩 FLAG BUTTON */}
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      setActiveFlagTaskId(task.id)
-                                    }}
-                                    style={{
-                                      border: "none",
-                                      background: "transparent",   
-                                      padding: "0",               
-                                      cursor: "pointer",
-                                      fontSize: "16px",
-                                    }}
-                                    title="Set flag"
-                                  >
-                                    🚩
-                                  </button>
-                                  {/* 👤 ASSIGN BUTTON */}
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      setActiveTaskId(task.id)
-                                      setSearch("")
-                                    }}
-                                    style={{
-                                      border: "none",
-                                      background: "transparent",
-                                      cursor: "pointer",
-                                    }}
-                                    title="Assign member"
-                                  >
-                                    👤
-                                  </button>
-
-                                  {/* ✏️ EDIT BUTTON */}
-                                  <button
-                                    onClick={(e) => {
-                                    e.stopPropagation()
-                                    setEditingTaskId(task.id)
-                                    setEditTitle(task.title)
-                                    setEditDesc(task.description || "")
-                                    setEditDueDate(
-                                      task.due_date
-                                        ? new Date(task.due_date).toISOString().slice(0, 16)
-                                        : ""
-                                    )
-                                  }}
-                                    style={{
-                                      border: "none",
-                                      background: "transparent",
-                                      cursor: "pointer",
-                                    }}
-                                    title="Edit task"
-                                  >
-                                    ✏️
-                                  </button>
-                                  <button
-                                    onClick={async (e) => {
-                                      e.stopPropagation()
-
-                                      setActiveDetailTask(task)
-
-                                      // fetch comments when opened
-                                      const { data } = await supabase
-                                        .from("comments")
-                                        .select("*")
-                                        .eq("task_id", task.id)
-                                        .order("created_at", { ascending: true })
-
-                                      if (data) setComments(data)
-                                    }}
-                                    style={{
-                                      border: "none",
-                                      background: "transparent",
-                                      cursor: "pointer",
-                                    }}
-                                    title="Comments"
-                                  >
-                                    💬
-                                  </button>
-                                </div>
-                              </div>
-
-                              {/* 📝 DESCRIPTION */}
-                              {task.description && (
-                                <div
-                                  style={{
-                                    fontSize: "12px",
-                                    marginTop: "4px",
-                                    color: "#555",
-                                  }}
-                                >
-                                  {task.description}
-                                </div>
-                              )}
-                              {/* DUE DATE */}
-                              {task.due_date && (
-                                <div
-                                  style={{
-                                    fontSize: "11px",
-                                    marginTop: "6px",
-                                    opacity: 0.7,
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "6px",
-                                  }}
-                                >
-                                  Due By: {new Date(task.due_date).toLocaleString()}
-                                </div>
-                              )}
-                              {/* 🔍 ASSIGN DROPDOWN */}
-                              {activeTaskId === task.id && (
-                                <div
-                                  style={{
-                                    marginTop: "8px",
-                                    background: "white",
-                                    padding: "8px",
-                                    borderRadius: "8px",
-                                    boxShadow: "0 4px 10px rgba(0,0,0,0.2)",
-                                  }}
-                                >
-                                  <input
-                                    type="text"
-                                    placeholder="Search team..."
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                    style={{
-                                      width: "100%",
-                                      padding: "6px",
-                                      marginBottom: "6px",
-                                      borderRadius: "6px",
-                                      border: "1px solid #ccc",
-                                    }}
-                                  />
-
-                                  {team
-                                    .filter((m) =>
-                                      m.name.toLowerCase().includes(search.toLowerCase())
-                                    )
-                                    .map((member) => (
-                                      <div
-                                        key={member.id}
-                                        onClick={async () => {
-                                          const updated = [...(task.assignees || []), member.id]
-
-                                          const { data, error } = await supabase
-                                            .from("tasks")
-                                            .update({ assignees: updated })
-                                            .eq("id", task.id)
-                                            .select()
-
-                                          if (error) {
-                                            console.error("Assign error:", error)
-                                            return
-                                          }
-
-                                          if (!data) return
-
-                                          setTasks((prev) =>
-                                            prev.map((t) =>
-                                              t.id === task.id ? data[0] : t
-                                            )
-                                          )
-
-                                          await logActivity(task.id, `Assigned ${member.name}`)
-
-                                          setActiveTaskId(null)
-                                        }}
-                                        style={{
-                                          padding: "6px",
-                                          cursor: "pointer",
-                                          borderRadius: "6px",
-                                        }}
-                                      >
-                                        {member.name}
-                                      </div>
-                                    ))}
-                                </div>
-                              )}
-
-                              {/* 👥 ASSIGNED AVATARS */}
-                              <div style={{ display: "flex", marginTop: "6px" }}>
-                                {task.assignees?.map((id) => {
-                                  const member = team.find((m) => m.id === id)
-                                  if (!member) return null
-
-                                  return (
-                                    <div
-                                      key={id}
+                                {/* EDIT MODE */}
+                                {editingTaskId === task.id ? (
+                                  <div>
+                                    <input
+                                      value={editTitle}
+                                      onChange={(e) => setEditTitle(e.target.value)}
                                       style={{
-                                        width: "20px",
-                                        height: "20px",
-                                        borderRadius: "50%",
-                                        background: member.color,
-                                        color: "white",
-                                        fontSize: "10px",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        marginRight: "4px",
-                                      }}
-                                    >
-                                      {member.name[0]}
-                                    </div>
-                                  )
-                                })}
-                              </div>
-                              {activeFlagTaskId === task.id && (
-                              <div
-                                style={{
-                                  marginTop: "8px",
-                                  background: "white",
-                                  padding: "8px",
-                                  borderRadius: "8px",
-                                  boxShadow: "0 4px 10px rgba(0,0,0,0.2)",
-                                }}
-                              >
-                                {flags.map((flag) => (
-                                  <div
-                                    key={flag.name}
-                                    onClick={async () => {
-                                      const { data, error } = await supabase
-                                        .from("tasks")
-                                        .update({ flag: flag.name })
-                                        .eq("id", task.id)
-                                        .select()
-
-                                      if (error) {
-                                        console.error(error)
-                                        return
-                                      }
-
-                                      if (!data) return
-
-                                      setTasks((prev) =>
-                                        prev.map((t) =>
-                                          t.id === task.id ? data[0] : t
-                                        )
-                                      )
-
-                                      await logActivity(task.id, `Set flag: ${flag.name}`)
-
-                                      setActiveFlagTaskId(null)
-                                    }}
-                                    style={{
-                                      padding: "6px",
-                                      cursor: "pointer",
-                                      borderRadius: "6px",
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: "8px",
-                                    }}
-                                  >
-                                    <div
-                                      style={{
-                                        width: "12px",
-                                        height: "12px",
-                                        borderRadius: "50%",
-                                        background: flag.color,
+                                        width: "100%",
+                                        marginBottom: "6px",
+                                        padding: "6px",
+                                        borderRadius: "6px",
+                                        border: "1px solid #ccc",
                                       }}
                                     />
-                                    {flag.name}
+
+                                    <input
+                                      type="datetime-local"
+                                      value={editDueDate}
+                                      onChange={(e) => setEditDueDate(e.target.value)}
+                                      style={{
+                                        width: "100%",
+                                        padding: "6px",
+                                        borderRadius: "6px",
+                                        border: "1px solid #ccc",
+                                        marginBottom: "6px",
+                                      }}
+                                    />
+
+                                    <textarea
+                                      placeholder="Description..."
+                                      value={editDesc}
+                                      onChange={(e) => setEditDesc(e.target.value)}
+                                      style={{
+                                        width: "100%",
+                                        padding: "6px",
+                                        borderRadius: "6px",
+                                        border: "1px solid #ccc",
+                                        marginBottom: "6px",
+                                      }}
+                                    />
+
+                                    <div style={{ display: "flex", gap: "6px" }}>
+                                      <button
+                                        onClick={async () => {
+                                            console.log(" SAVE CLICKED")
+
+                                            if (!editTitle.trim()) {
+                                              console.log(" empty title")
+                                              return
+                                            }
+
+                                            try {
+                                              const { data, error } = await supabase
+                                                .from("tasks")
+                                                .update({
+                                                  title: editTitle,
+                                                  description: editDesc || "",
+                                                  due_date: editDueDate
+                                                    ? new Date(editDueDate).toISOString()
+                                                    : null,
+                                                })
+                                                .eq("id", String(task.id))
+                                                .select()
+
+                                              if (error) {
+                                                console.error(" UPDATE FAILED:", error)
+                                                return
+                                              }
+
+                                              if (!data || data.length === 0) return
+
+                                              const updatedTask = data[0]
+
+                                              setTasks((prev) =>
+                                                prev.map((t) =>
+                                                  t.id === updatedTask.id ? updatedTask : t
+                                                )
+                                              )
+
+                                              if (activeDetailTask?.id === updatedTask.id) {
+                                                setActiveDetailTask(updatedTask)
+                                              }
+
+                                              await logActivity(updatedTask.id, "Edited task")
+
+                                              setEditingTaskId(null)
+
+                                              //  RESET INPUTS
+                                              setEditTitle("")
+                                              setEditDesc("")
+                                              setEditDueDate("")
+
+                                            } catch (err) {
+                                              console.error(" SAVE CRASH:", err)
+                                            }
+                                          }}
+                                        style={{
+                                          padding: "6px 10px",
+                                          borderRadius: "6px",
+                                          border: "none",
+                                          background: "#2563eb",
+                                          color: "white",
+                                          cursor: "pointer",
+                                        }}
+                                      >
+                                        Save
+                                      </button>
+
+                                      <button
+                                        onClick={() => setEditingTaskId(null)}
+                                        style={{
+                                          padding: "6px 10px",
+                                          borderRadius: "6px",
+                                          border: "none",
+                                          background: "#e5e7eb",
+                                          cursor: "pointer",
+                                        }}
+                                      >
+                                        Cancel
+                                      </button>
+                                    </div>
                                   </div>
-                                ))}
+                                ) : (
+                                  <>
+                                    {/* HEADER */}
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
+                                      }}
+                                    >
+                                      <span
+                                        onClick={() => setActiveDetailTask(task)}
+                                        style={{ cursor: "pointer"}}
+                                      >{task.title}</span>
+
+                                      <div style={{ display: "flex", gap: "8px" }}>
+                                        {/*  FLAG BUTTON */}
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            setActiveFlagTaskId(task.id)
+                                          }}
+                                          style={{
+                                            border: "none",
+                                            background: "transparent",   
+                                            padding: "0",               
+                                            cursor: "pointer",
+                                            fontSize: "16px",
+                                          }}
+                                          title="Set flag"
+                                        >
+                                          🚩
+                                        </button>
+                                        {/* ASSIGN BUTTON */}
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            setActiveTaskId(task.id)
+                                            setSearch("")
+                                          }}
+                                          style={{
+                                            border: "none",
+                                            background: "transparent",
+                                            cursor: "pointer",
+                                          }}
+                                          title="Assign member"
+                                        >
+                                          👤
+                                        </button>
+
+                                        {/* EDIT BUTTON */}
+                                        <button
+                                          onClick={(e) => {
+                                          e.stopPropagation()
+                                          setEditingTaskId(task.id)
+                                          setEditTitle(task.title)
+                                          setEditDesc(task.description || "")
+                                          setEditDueDate(
+                                            task.due_date
+                                              ? new Date(task.due_date).toISOString().slice(0, 16)
+                                              : ""
+                                          )
+                                        }}
+                                          style={{
+                                            border: "none",
+                                            background: "transparent",
+                                            cursor: "pointer",
+                                          }}
+                                          title="Edit task"
+                                        >
+                                          ✏️
+                                        </button>
+                                        <button
+                                          onClick={async (e) => {
+                                            e.stopPropagation()
+
+                                            setActiveDetailTask(task)
+
+                                            // fetch comments when opened
+                                            const { data } = await supabase
+                                              .from("comments")
+                                              .select("*")
+                                              .eq("task_id", task.id)
+                                              .order("created_at", { ascending: true })
+
+                                            if (data) setComments(data)
+                                          }}
+                                          style={{
+                                            border: "none",
+                                            background: "transparent",
+                                            cursor: "pointer",
+                                          }}
+                                          title="Comments"
+                                        >
+                                          💬
+                                        </button>
+                                      </div>
+                                    </div>
+
+                                    {/* DESCRIPTION */}
+                                    {task.description && (
+                                      <div
+                                        style={{
+                                          fontSize: "12px",
+                                          marginTop: "4px",
+                                          color: "#555",
+                                        }}
+                                      >
+                                        {task.description}
+                                      </div>
+                                    )}
+                                    {/* DUE DATE */}
+                                    {task.due_date && (
+                                      <div
+                                        style={{
+                                          fontSize: "11px",
+                                          marginTop: "6px",
+                                          opacity: 0.7,
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: "6px",
+                                        }}
+                                      >
+                                        Due By: {new Date(task.due_date).toLocaleString()}
+                                      </div>
+                                    )}
+                                    {/* ASSIGN DROPDOWN */}
+                                    {activeTaskId === task.id && (
+                                      <div
+                                        style={{
+                                          marginTop: "8px",
+                                          background: "white",
+                                          padding: "8px",
+                                          borderRadius: "8px",
+                                          boxShadow: "0 4px 10px rgba(0,0,0,0.2)",
+                                        }}
+                                      >
+                                        <input
+                                          type="text"
+                                          placeholder="Search team..."
+                                          value={search}
+                                          onChange={(e) => setSearch(e.target.value)}
+                                          style={{
+                                            width: "100%",
+                                            padding: "6px",
+                                            marginBottom: "6px",
+                                            borderRadius: "6px",
+                                            border: "1px solid #ccc",
+                                          }}
+                                        />
+
+                                        {team
+                                          .filter((m) =>
+                                            m.name.toLowerCase().includes(search.toLowerCase())
+                                          )
+                                          .map((member) => (
+                                            <div
+                                              key={member.id}
+                                              onClick={async () => {
+                                                const updated = [...(task.assignees || []), member.id]
+
+                                                const { data, error } = await supabase
+                                                  .from("tasks")
+                                                  .update({ assignees: updated })
+                                                  .eq("id", task.id)
+                                                  .select()
+
+                                                if (error) {
+                                                  console.error("Assign error:", error)
+                                                  return
+                                                }
+
+                                                if (!data) return
+
+                                                setTasks((prev) =>
+                                                  prev.map((t) =>
+                                                    t.id === task.id ? data[0] : t
+                                                  )
+                                                )
+
+                                                await logActivity(task.id, `Assigned ${member.name}`)
+
+                                                setActiveTaskId(null)
+                                              }}
+                                              style={{
+                                                padding: "6px",
+                                                cursor: "pointer",
+                                                borderRadius: "6px",
+                                              }}
+                                            >
+                                              {member.name}
+                                            </div>
+                                          ))}
+                                      </div>
+                                    )}
+
+                                    {/* ASSIGNED AVATARS */}
+                                    <div style={{ display: "flex", marginTop: "6px" }}>
+                                      {task.assignees?.map((id) => {
+                                        const member = team.find((m) => m.id === id)
+                                        if (!member) return null
+
+                                        return (
+                                          <div
+                                            key={id}
+                                            style={{
+                                              width: "20px",
+                                              height: "20px",
+                                              borderRadius: "50%",
+                                              background: member.color,
+                                              color: "white",
+                                              fontSize: "10px",
+                                              display: "flex",
+                                              alignItems: "center",
+                                              justifyContent: "center",
+                                              marginRight: "4px",
+                                            }}
+                                          >
+                                            {member.name[0]}
+                                          </div>
+                                        )
+                                      })}
+                                    </div>
+                                    {activeFlagTaskId === task.id && (
+                                    <div
+                                      style={{
+                                        marginTop: "8px",
+                                        background: "white",
+                                        padding: "8px",
+                                        borderRadius: "8px",
+                                        boxShadow: "0 4px 10px rgba(0,0,0,0.2)",
+                                      }}
+                                    >
+                                      {flags.map((flag) => (
+                                        <div
+                                          key={flag.name}
+                                          onClick={async () => {
+                                            const { data, error } = await supabase
+                                              .from("tasks")
+                                              .update({ flag: flag.name })
+                                              .eq("id", task.id)
+                                              .select()
+
+                                            if (error) {
+                                              console.error(error)
+                                              return
+                                            }
+
+                                            if (!data) return
+
+                                            setTasks((prev) =>
+                                              prev.map((t) =>
+                                                t.id === task.id ? data[0] : t
+                                              )
+                                            )
+
+                                            await logActivity(task.id, `Set flag: ${flag.name}`)
+
+                                            setActiveFlagTaskId(null)
+                                          }}
+                                          style={{
+                                            padding: "6px",
+                                            cursor: "pointer",
+                                            borderRadius: "6px",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: "8px",
+                                          }}
+                                        >
+                                          <div
+                                            style={{
+                                              width: "12px",
+                                              height: "12px",
+                                              borderRadius: "50%",
+                                              background: flag.color,
+                                            }}
+                                          />
+                                          {flag.name}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                  </>
+                                )}
                               </div>
                             )}
-                            </>
-                          )}
-                        </div>
-                      )}
-                    </Draggable>
-                    )
-                  })}
+                          </Draggable>
+                          )
+                        })}
 
-                  {provided.placeholder}
+                        {provided.placeholder}
+                      </div>
+                    )}
+                  </Droppable>
+                ))}
                 </div>
-              )}
-            </Droppable>
-          ))}
-          </div>
-      </DragDropContext>
-      ) : (
-  <CalendarView tasks={tasks} />
-)} 
+            </DragDropContext>
+            ) : (
+        <CalendarView tasks={tasks} />
+      )} 
     </div>
     {/* RIGHT: TEAM SIDEBAR */}
         
-<div
-  style={{
-    width: "260px",                 
-    minHeight: "100vh",             
-    position: "sticky",
-    top: "0",                       
+  <div
+    style={{
+      width: "260px",                 
+      minHeight: "100vh",             
+      position: "sticky",
+      top: "0",                       
 
-    display: "flex",
-    flexDirection: "column",
+      display: "flex",
+      flexDirection: "column",
 
-    background: "linear-gradient(180deg, #1e3a8a, #1e40af)",
-    color: "white",
-    boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
-    borderRadius: "12px",
-    padding: "16px",
-  }}
->
-  <h3 style={{ textAlign: "center", marginBottom: "12px" }}>
-    Team Members:
-  </h3>
+      background: "linear-gradient(180deg, #1e3a8a, #1e40af)",
+      color: "white",
+      boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+      borderRadius: "12px",
+      padding: "16px",
+    }}
+  >
+    <h3 style={{ textAlign: "center", marginBottom: "12px" }}>
+      Team Members:
+    </h3>
 
-  {team.map((member) => (
+    {team.map((member) => (
+      <div
+        key={member.id}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+          marginBottom: "10px",
+          padding: "8px",
+          borderRadius: "8px",
+          background: "rgba(255,255,255,0.2)",
+        }}
+      >
+        <div
+          style={{
+            width: "32px",
+            height: "32px",
+            borderRadius: "50%",
+            background: member.color || "#3b82f6",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "white",
+            fontWeight: "bold",
+          }}
+        >
+          {member.name[0]}
+        </div>
+
+        <span>{member.name}</span>
+      </div>
+    ))}
+  </div>
+    </div>
+  {activeDetailTask && (
     <div
-      key={member.id}
       style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        width: "100%",
+        height: "100vh",
+        background: "rgba(0,0,0,0.4)",
         display: "flex",
+        justifyContent: "center",
         alignItems: "center",
-        gap: "10px",
-        marginBottom: "10px",
-        padding: "8px",
-        borderRadius: "8px",
-        background: "rgba(255,255,255,0.2)",
+        zIndex: 1000,
       }}
     >
       <div
         style={{
-          width: "32px",
-          height: "32px",
-          borderRadius: "50%",
-          background: member.color || "#3b82f6",
+          width: "80%",
+          height: "80%",
+          background: "rgba(30,64,175,0.9)",
+          backdropFilter: "blur(10px)",
+          borderRadius: "16px",
+          padding: "20px",
           display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
+          flexDirection: "column",
           color: "white",
-          fontWeight: "bold",
         }}
       >
-        {member.name[0]}
-      </div>
-
-      <span>{member.name}</span>
-    </div>
-  ))}
-</div>
-  </div>
-{activeDetailTask && (
-  <div
-    style={{
-      position: "fixed",
-      top: 0,
-      left: 0,
-      width: "100%",
-      height: "100vh",
-      background: "rgba(0,0,0,0.4)",
-      display: "flex",
-      justifyContent: "center",
-      alignItems: "center",
-      zIndex: 1000,
-    }}
-  >
-    <div
-      style={{
-        width: "80%",
-        height: "80%",
-        background: "rgba(30,64,175,0.9)",
-        backdropFilter: "blur(10px)",
-        borderRadius: "16px",
-        padding: "20px",
-        display: "flex",
-        flexDirection: "column",
-        color: "white",
-      }}
-    >
-      {/* HEADER */}
-      <div style={{ textAlign: "center", marginBottom: "20px" }}>
-      <button
-        onClick={() => setActiveDetailTask(null)}
-        style={{
-          position: "absolute",
-          top: "20px",
-          right: "20px",
-          background: "rgba(255,255,255,0.15)",
-          border: "none",
-          borderRadius: "8px",
-          padding: "6px 12px",
-          color: "white",
-          cursor: "pointer",
-        }}
-      >
-        Close
-      </button>
-
-      <h2 style={{ margin: 0 }}>{activeDetailTask.title}</h2>
-
-      <p style={{ opacity: 0.7, marginTop: "6px" }}>
-        {activeDetailTask.description || "No description"}
-      </p>
-      </div>
-
-      <div style={{ display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: "24px",
-                    flex: 1, 
-                  }}>
-
-        {/* COMMENTS */}
-        <div
+        {/* HEADER */}
+        <div style={{ textAlign: "center", marginBottom: "20px" }}>
+        <button
+          onClick={() => setActiveDetailTask(null)}
           style={{
-            marginBottom: "10px",
-            padding: "12px",
-            borderRadius: "12px",
+            position: "absolute",
+            top: "20px",
+            right: "20px",
             background: "rgba(255,255,255,0.15)",
+            border: "none",
+            borderRadius: "8px",
+            padding: "6px 12px",
+            color: "white",
+            cursor: "pointer",
           }}
         >
-          <h3>Comments</h3>
+          Close
+        </button>
 
-          <div style={{ flex: 1, overflowY: "auto" }}>
-            {comments.length === 0 && (
-              <div style={{ fontSize: "11px", opacity: 0.6 }}>No comments yet</div>
-            )}
+        <h2 style={{ margin: 0 }}>{activeDetailTask.title}</h2>
 
-           {comments.map((c) => (
-              <div
-                key={c.id}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: "12px",
-                  padding: "10px 12px",
-                  borderRadius: "12px",
-                  background: "rgba(255,255,255,0.15)",
-                }}
-              >
-                {/* LEFT: Message */}
-                <div style={{ flex: 1 }}>
-                  {c.content}
-                </div>
-                
+        <p style={{ opacity: 0.7, marginTop: "6px" }}>
+          {activeDetailTask.description || "No description"}
+        </p>
+        </div>
 
-                {/* RIGHT: Timestamp */}
+        <div style={{ display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: "24px",
+                      flex: 1, 
+                    }}>
+
+          {/* COMMENTS */}
+          <div
+            style={{
+              marginBottom: "10px",
+              padding: "12px",
+              borderRadius: "12px",
+              background: "rgba(255,255,255,0.15)",
+            }}
+          >
+            <h3>Comments</h3>
+
+            <div style={{ flex: 1, overflowY: "auto" }}>
+              {comments.length === 0 && (
+                <div style={{ fontSize: "11px", opacity: 0.6 }}>No comments yet</div>
+              )}
+
+            {comments.map((c) => (
                 <div
+                  key={c.id}
                   style={{
-                    fontSize: "11px",
-                    opacity: 0.6,
-                    marginLeft: "12px",
-                    whiteSpace: "nowrap",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: "12px",
+                    padding: "10px 12px",
+                    borderRadius: "12px",
+                    background: "rgba(255,255,255,0.15)",
                   }}
                 >
-                  {new Date(c.created_at).toLocaleTimeString()}
+                  {/* LEFT: Message */}
+                  <div style={{ flex: 1 }}>
+                    {c.content}
+                  </div>
+                  
+
+                  {/* RIGHT: Timestamp */}
+                  <div
+                    style={{
+                      fontSize: "11px",
+                      opacity: 0.6,
+                      marginLeft: "12px",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {new Date(c.created_at).toLocaleTimeString()}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <textarea
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              placeholder="Write a comment..."
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                padding: "12px",
+                borderRadius: "12px",
+                border: "1px solid rgba(255,255,255,0.15)",
+                background: "rgba(0,0,0,0.25)",
+                color: "#ffffff",
+                fontSize: "14px",
+                lineHeight: "1.5",
+                outline: "none",
+                marginTop: "10px",
+                resize: "none",
+              }}
+            />
+            <button style={{
+                      marginTop: "10px",
+                      padding: "12px",
+                      borderRadius: "10px",
+                      border: "none",
+                      background: "linear-gradient(135deg, #2563eb, #60a5fa)",
+                      color: "white",
+                      fontWeight: "600",
+                      cursor: "pointer",
+                    }} 
+            onClick={addComment}>Add Comment</button>
+          </div>
+
+          {/* ACTIVITY */}
+          <div style={{
+                      marginBottom: "12px",
+                      padding: "10px",
+                      borderRadius: "10px",
+                      background: "rgba(255,255,255,0.1)",
+                      borderLeft: "3px solid #60a5fa",
+                    }}>
+            <h3>Activity</h3>
+
+            {activity.length === 0 && (
+              <div style={{ opacity: 0.6 }}>No activity yet</div>
+            )}
+
+            {activity.map((a) => (
+              <div
+                key={a.id}
+                style={{
+                  marginBottom: "12px",
+                  padding: "10px",
+                  borderRadius: "10px",
+                  background: "rgba(255,255,255,0.1)",
+                  borderLeft: "3px solid #60a5fa",
+                }}
+              >
+                <div style={{ fontWeight: "500" }}>{a.action}</div>
+
+                <div style={{ fontSize: "11px", opacity: 0.6 }}>
+                  {new Date(a.created_at).toLocaleString()}
                 </div>
               </div>
             ))}
           </div>
 
-          <textarea
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            placeholder="Write a comment..."
-            style={{
-              width: "100%",
-              boxSizing: "border-box",
-              padding: "12px",
-              borderRadius: "12px",
-              border: "1px solid rgba(255,255,255,0.15)",
-              background: "rgba(0,0,0,0.25)",
-              color: "#ffffff",
-              fontSize: "14px",
-              lineHeight: "1.5",
-              outline: "none",
-              marginTop: "10px",
-              resize: "none",
-            }}
-          />
-          <button style={{
-                    marginTop: "10px",
-                    padding: "12px",
-                    borderRadius: "10px",
-                    border: "none",
-                    background: "linear-gradient(135deg, #2563eb, #60a5fa)",
-                    color: "white",
-                    fontWeight: "600",
-                    cursor: "pointer",
-                  }} 
-          onClick={addComment}>Add Comment</button>
         </div>
-
-        {/* ACTIVITY */}
-        <div style={{
-                    marginBottom: "12px",
-                    padding: "10px",
-                    borderRadius: "10px",
-                    background: "rgba(255,255,255,0.1)",
-                    borderLeft: "3px solid #60a5fa",
-                  }}>
-          <h3>Activity</h3>
-
-          {activity.length === 0 && (
-            <div style={{ opacity: 0.6 }}>No activity yet</div>
-          )}
-
-          {activity.map((a) => (
-            <div
-              key={a.id}
-              style={{
-                marginBottom: "12px",
-                padding: "10px",
-                borderRadius: "10px",
-                background: "rgba(255,255,255,0.1)",
-                borderLeft: "3px solid #60a5fa",
-              }}
-            >
-              <div style={{ fontWeight: "500" }}>{a.action}</div>
-
-              <div style={{ fontSize: "11px", opacity: 0.6 }}>
-                {new Date(a.created_at).toLocaleString()}
-              </div>
-            </div>
-          ))}
-        </div>
-
       </div>
     </div>
-  </div>
-             
-  )}
-  </>
-)
+              
+    )}
+    </>
+  )
 }
 export default App
